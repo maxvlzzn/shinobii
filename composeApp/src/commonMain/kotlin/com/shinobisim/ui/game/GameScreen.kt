@@ -442,7 +442,7 @@ private fun SpinResultDisplay(
             accentColor = colors.accentGreen,
             textColor = Color.White,
             modifier = Modifier.fillMaxWidth(0.6f),
-            height = 482
+            height = 48
         )
     }
 }
