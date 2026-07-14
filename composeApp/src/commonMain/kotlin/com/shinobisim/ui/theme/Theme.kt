@@ -1,29 +1,29 @@
 package com.shinobisim.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
+private val LightColorScheme = lightColorScheme(
     primary = AccentRed,
-    onPrimary = TextPrimary,
+    onPrimary = ButtonPrimaryText,
     primaryContainer = AccentRedDark,
-    onPrimaryContainer = TextPrimary,
+    onPrimaryContainer = ButtonPrimaryText,
     secondary = AccentGold,
-    onSecondary = DarkNavy,
+    onSecondary = TextPrimary,
     tertiary = AccentBlue,
-    onTertiary = DarkNavy,
-    background = DarkNavy,
+    onTertiary = ButtonPrimaryText,
+    background = Background,
     onBackground = TextPrimary,
     surface = Surface,
     onSurface = TextPrimary,
-    surfaceVariant = PanelNavy,
+    surfaceVariant = SurfaceVariant,
     onSurfaceVariant = TextSecondary,
     error = ErrorRed,
-    onError = TextPrimary,
+    onError = ButtonPrimaryText,
     outline = Divider
 )
 
@@ -37,9 +37,9 @@ object AppDimensions {
 
 val LocalAppColors = staticCompositionLocalOf {
     AppColors(
-        darkNavy = DarkNavy,
-        deepNavy = DeepNavy,
-        panelNavy = PanelNavy,
+        darkNavy = Background,
+        deepNavy = SurfaceVariant,
+        panelNavy = PanelColor,
         accentRed = AccentRed,
         accentOrange = AccentOrange,
         accentGold = AccentGold,
@@ -54,7 +54,13 @@ val LocalAppColors = staticCompositionLocalOf {
         fire = FireColor,
         water = WaterColor,
         wind = WindColor,
-        lightning = LightningColor
+        lightning = LightningColor,
+        buttonPrimary = ButtonPrimary,
+        buttonPrimaryText = ButtonPrimaryText,
+        buttonSecondary = ButtonSecondary,
+        buttonSecondaryText = ButtonSecondaryText,
+        buttonDisabled = ButtonDisabled,
+        buttonDisabledText = ButtonDisabledText
     )
 }
 
@@ -76,14 +82,20 @@ data class AppColors(
     val fire: Color,
     val water: Color,
     val wind: Color,
-    val lightning: Color
+    val lightning: Color,
+    val buttonPrimary: Color,
+    val buttonPrimaryText: Color,
+    val buttonSecondary: Color,
+    val buttonSecondaryText: Color,
+    val buttonDisabled: Color,
+    val buttonDisabledText: Color
 )
 
 @Composable
 fun ShinobiTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalAppColors provides LocalAppColors.current) {
         MaterialTheme(
-            colorScheme = DarkColorScheme,
+            colorScheme = LightColorScheme,
             typography = Typography,
             content = content
         )

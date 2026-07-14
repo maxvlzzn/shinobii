@@ -1,7 +1,5 @@
 package com.shinobisim.ui.game
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,12 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,14 +28,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shinobisim.logic.GameManager
 import com.shinobisim.model.ClanSkillTrees
 import com.shinobisim.model.Shinobi
 import com.shinobisim.model.Skill
+import com.shinobisim.ui.theme.AccentButton
+import com.shinobisim.ui.theme.Background
 import com.shinobisim.ui.theme.LocalAppColors
+import com.shinobisim.ui.theme.SecondaryButton
 import com.shinobisim.ui.theme.toColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -58,6 +58,7 @@ fun ClanSkillTreeScreen(
     val manager = remember { GameManager() }
     val clanColor = shinobi.clan.primaryColor.toColor()
     val skills = remember(shinobi.clan) { ClanSkillTrees.skillsFor(shinobi.clan) }
+    var selectedSkill by remember { mutableStateOf<Skill?>(null) }
 
     fun persist(updated: Shinobi) {
         shinobi = updated
@@ -69,29 +70,23 @@ fun ClanSkillTreeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(colors.darkNavy, colors.deepNavy)))
+            .background(Background)
+            .padding(24.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
+            SecondaryButton(
+                text = "Назад",
                 onClick = { onBack(shinobi) },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.panelNavy,
-                    contentColor = colors.textPrimary
-                )
-            ) {
-                Text("Назад", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            }
-            Spacer(Modifier.width(12.dp))
+                height = 44
+            )
+            Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Дерево клана ${shinobi.clan.displayName}",
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary
                 )
@@ -103,153 +98,123 @@ fun ClanSkillTreeScreen(
             }
         }
 
+        Spacer(Modifier.height(16.dp))
+
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            items(skills) { skill ->
-                SkillCard(
+            itemsIndexed(skills) { index, skill ->
+                TreeSkillNode(
                     skill = skill,
                     currentLevel = shinobi.clanSkills[skill.id] ?: 0,
                     accentColor = clanColor,
-                    canUpgrade = manager.canUpgradeClanSkill(shinobi, skill),
-                    colors = colors,
-                    onUpgrade = {
-                        manager.upgradeClanSkill(shinobi, skill)?.let { persist(it) }
-                    }
+                    isLast = index == skills.lastIndex,
+                    onClick = { selectedSkill = skill }
                 )
             }
         }
     }
+
+    selectedSkill?.let { skill ->
+        SkillDetailDialog(
+            skill = skill,
+            elementColor = clanColor,
+            icon = skill.name.first().toString(),
+            photoUrl = "",
+            currentLevel = shinobi.clanSkills[skill.id] ?: 0,
+            canUpgrade = manager.canUpgradeClanSkill(shinobi, skill),
+            onDismiss = { selectedSkill = null },
+            onConfirm = {
+                manager.upgradeClanSkill(shinobi, skill)?.let { persist(it) }
+                selectedSkill = null
+            }
+        )
+    }
 }
 
 @Composable
-fun SkillCard(
+private fun TreeSkillNode(
     skill: Skill,
     currentLevel: Int,
-    accentColor: androidx.compose.ui.graphics.Color,
-    canUpgrade: Boolean,
-    colors: com.shinobisim.ui.theme.AppColors,
-    onUpgrade: () -> Unit
+    accentColor: Color,
+    isLast: Boolean,
+    onClick: () -> Unit
 ) {
-    val bgColor by animateColorAsState(
-        targetValue = if (canUpgrade) accentColor.copy(alpha = 0.12f) else colors.panelNavy,
-        animationSpec = tween(300),
-        label = "skill_bg"
-    )
+    val colors = LocalAppColors.current
+    val hasLevel = currentLevel > 0
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(bgColor)
-            .border(1.dp, colors.divider, RoundedCornerShape(16.dp))
-            .padding(16.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (!isLast) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(20.dp)
+                    .background(accentColor.copy(alpha = 0.3f))
+            )
+        }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(72.dp)
                     .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(accentColor.copy(alpha = 0.5f), accentColor.copy(alpha = 0.1f))))
-                    .border(2.dp, accentColor, CircleShape),
+                    .background(
+                        if (hasLevel) Brush.radialGradient(
+                            listOf(accentColor.copy(alpha = 0.7f), accentColor.copy(alpha = 0.15f))
+                        ) else Brush.radialGradient(
+                            listOf(colors.panelNavy, colors.surface)
+                        )
+                    )
+                    .border(
+                        width = if (hasLevel) 3.dp else 2.dp,
+                        color = if (hasLevel) accentColor else colors.divider,
+                        shape = CircleShape
+                    )
+                    .clickable(onClick = onClick),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = skill.name.first().toString(),
-                    fontSize = 20.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
-                    color = colors.textPrimary
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = skill.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
-                )
-                Text(
-                    text = skill.description,
-                    fontSize = 13.sp,
-                    color = colors.textSecondary,
-                    lineHeight = 18.sp
+                    color = if (hasLevel) Color.White else colors.textSecondary
                 )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
-        LevelBar(
-            currentLevel = currentLevel,
-            maxLevel = skill.maxLevel,
-            accentColor = accentColor,
-            colors = colors
+        Text(
+            text = skill.name,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (hasLevel) colors.textPrimary else colors.textSecondary,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "Ур. $currentLevel / ${skill.maxLevel}",
+            fontSize = 12.sp,
+            color = colors.textDim
         )
 
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Стоимость: ${skill.costPerLevel} оч.",
-                fontSize = 13.sp,
-                color = colors.textSecondary
-            )
-            Button(
-                onClick = onUpgrade,
-                enabled = canUpgrade,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor,
-                    contentColor = colors.textPrimary,
-                    disabledContainerColor = colors.panelNavy,
-                    disabledContentColor = colors.textDim
-                )
-            ) {
-                Text(
-                    text = if (currentLevel >= skill.maxLevel) "Максимум" else "Прокачать",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun LevelBar(
-    currentLevel: Int,
-    maxLevel: Int,
-    accentColor: androidx.compose.ui.graphics.Color,
-    colors: com.shinobisim.ui.theme.AppColors
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        repeat(maxLevel) { index ->
+        if (!isLast) {
+            Spacer(Modifier.height(8.dp))
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(if (index < currentLevel) accentColor else colors.divider)
+                    .width(2.dp)
+                    .height(20.dp)
+                    .background(accentColor.copy(alpha = 0.3f))
             )
         }
     }
-    Spacer(Modifier.height(4.dp))
-    Text(
-        text = "Уровень $currentLevel / $maxLevel",
-        fontSize = 12.sp,
-        color = colors.textSecondary
-    )
 }

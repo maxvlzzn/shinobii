@@ -5,10 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +16,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shinobisim.logic.GameManager
@@ -28,10 +29,10 @@ import com.shinobisim.ui.game.ElementalSkillTreeScreen
 import com.shinobisim.ui.game.GameScreen
 import com.shinobisim.ui.menu.ClanSelectionScreen
 import com.shinobisim.ui.menu.MainMenuScreen
-import com.shinobisim.ui.theme.AccentRed
-import com.shinobisim.ui.theme.DarkNavy
+import com.shinobisim.ui.theme.Background
+import com.shinobisim.ui.theme.LocalAppColors
+import com.shinobisim.ui.theme.SecondaryButton
 import com.shinobisim.ui.theme.ShinobiTheme
-import com.shinobisim.ui.theme.TextPrimary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -48,12 +49,13 @@ private sealed class Route {
 @Composable
 fun App() {
     ShinobiTheme {
+        val colors = LocalAppColors.current
         var route by remember { mutableStateOf<Route>(Route.MainMenu) }
         val scope = rememberCoroutineScope()
         var isLoading by remember { mutableStateOf(false) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
 
-        Box(modifier = Modifier.fillMaxSize().background(DarkNavy)) {
+        Box(modifier = Modifier.fillMaxSize().background(Background)) {
             when (val current = route) {
                 is Route.MainMenu -> MainMenuScreen(
                     onNewGame = { route = Route.ClanSelection },
@@ -111,32 +113,33 @@ fun App() {
 
             if (isLoading) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(DarkNavy.copy(alpha = 0.7f)),
+                    modifier = Modifier.fillMaxSize().background(Background.copy(alpha = 0.8f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = AccentRed)
+                    CircularProgressIndicator(color = colors.accentRed)
                 }
             }
 
             errorMessage?.let { msg ->
-                Box(
-                    modifier = Modifier.fillMaxSize().background(DarkNavy.copy(alpha = 0.85f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = msg,
-                            color = AccentRed,
-                            fontSize = 16.sp
+                AlertDialog(
+                    onDismissRequest = { errorMessage = null },
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)),
+                    containerColor = colors.surface,
+                    shape = RoundedCornerShape(20.dp),
+                    title = {
+                        Text("Ошибка", color = colors.accentRed, fontSize = 20.sp)
+                    },
+                    text = {
+                        Text(msg, color = colors.textPrimary, fontSize = 15.sp)
+                    },
+                    confirmButton = {
+                        SecondaryButton(
+                            text = "Закрыть",
+                            onClick = { errorMessage = null },
+                            height = 44
                         )
-                        TextButton(onClick = { errorMessage = null }) {
-                            Text("Закрыть", color = TextPrimary)
-                        }
                     }
-                }
+                )
             }
         }
     }

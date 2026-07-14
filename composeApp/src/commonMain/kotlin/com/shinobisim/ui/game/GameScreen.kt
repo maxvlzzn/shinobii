@@ -9,12 +9,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,16 +49,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shinobisim.logic.GameManager
 import com.shinobisim.model.Shinobi
+import com.shinobisim.ui.theme.AccentButton
+import com.shinobisim.ui.theme.Background
 import com.shinobisim.ui.theme.LocalAppColors
+import com.shinobisim.ui.theme.SecondaryButton
 import com.shinobisim.ui.theme.toColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.PI
 
 @Composable
 fun GameScreen(
@@ -84,19 +85,118 @@ fun GameScreen(
         }
     }
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(colors.darkNavy, colors.deepNavy)))
+            .background(Background)
     ) {
-        ShinobiHeader(shinobi = shinobi, colors = colors)
+        // Left panel: character info + actions
+        Column(
+            modifier = Modifier
+                .weight(0.4f)
+                .fillMaxHeight()
+                .padding(16.dp)
+        ) {
+            ShinobiHeader(shinobi = shinobi, colors = colors)
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
+            RatingBar(rating = shinobi.rating, colors = colors)
+
+            Spacer(Modifier.height(16.dp))
+
+            // Action buttons
+            val canIncreaseAge = !shinobi.isMaxAge
+
+            AccentButton(
+                text = if (canIncreaseAge) "Повысить возраст (+1 год)" else "Максимальный возраст",
+                onClick = {
+                    if (!canIncreaseAge || isSpinning) return@AccentButton
+                    val aged = manager.increaseAge(shinobi)
+                    if (aged != shinobi) {
+                        persist(aged)
+                        // Trigger roulette spin on age increase
+                        isSpinning = true
+                        lastSpinResult = null
+                        showSpinResult = false
+                        scope.launch {
+                            delay(2500)
+                            val (updated, points) = manager.spinRoulette(shinobi)
+                            lastSpinResult = points
+                            isSpinning = false
+                            showSpinResult = true
+                            persist(updated.copy(skillPoints = updated.skillPoints))
+                        }
+                    }
+                },
+                enabled = canIncreaseAge && !isSpinning,
+                accentColor = colors.accentGreen,
+                textColor = Color.White,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SecondaryButton(
+                    text = "Дерево клана",
+                    onClick = { onOpenClanTree(shinobi) },
+                    modifier = Modifier.weight(1f),
+                    height = 48
+                )
+                SecondaryButton(
+                    text = "Стихии",
+                    onClick = { onOpenElementalTree(shinobi) },
+                    modifier = Modifier.weight(1f),
+                    height = 48
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Skill points info card
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surface)
+                    .border(1.dp, colors.divider, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Очки навыков", fontSize = 13.sp, color = colors.textSecondary)
+                        Text(
+                            "${shinobi.skillPoints}",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Black,
+                            color = colors.accentGreen
+                        )
+                    }
+                    Text(
+                        text = "Повышайте возраст,\nчтобы крутить рулетку",
+                        fontSize = 12.sp,
+                        color = colors.textDim,
+                        textAlign = TextAlign.End,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+
+        // Right panel: roulette
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+                .weight(0.6f)
+                .fillMaxHeight()
+                .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             if (showSpinResult && lastSpinResult != null) {
@@ -108,43 +208,10 @@ fun GameScreen(
             } else {
                 RouletteWheel(
                     isSpinning = isSpinning,
-                    colors = colors,
-                    onSpin = {
-                        if (!isSpinning) {
-                            isSpinning = true
-                            lastSpinResult = null
-                            showSpinResult = false
-                            scope.launch {
-                                delay(2500)
-                                val (updated, points) = manager.spinRoulette(shinobi)
-                                lastSpinResult = points
-                                isSpinning = false
-                                showSpinResult = true
-                                persist(updated)
-                            }
-                        }
-                    }
+                    colors = colors
                 )
             }
         }
-
-        BottomPanel(
-            shinobi = shinobi,
-            colors = colors,
-            onIncreaseRating = {
-                manager.increaseRating(shinobi)?.let { persist(it) }
-            },
-            onIncreaseAge = {
-                val aged = manager.increaseAge(shinobi)
-                if (aged != shinobi) {
-                    lastSpinResult = null
-                    showSpinResult = false
-                    persist(aged)
-                }
-            },
-            onOpenClanTree = { onOpenClanTree(shinobi) },
-            onOpenElementalTree = { onOpenElementalTree(shinobi) }
-        )
     }
 }
 
@@ -153,13 +220,12 @@ private fun ShinobiHeader(shinobi: Shinobi, colors: com.shinobisim.ui.theme.AppC
     val clanColor = shinobi.clan.primaryColor.toColor()
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+            .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(56.dp)
                 .clip(CircleShape)
                 .background(Brush.radialGradient(listOf(clanColor.copy(alpha = 0.5f), clanColor.copy(alpha = 0.1f))))
                 .border(2.dp, clanColor, CircleShape),
@@ -167,7 +233,7 @@ private fun ShinobiHeader(shinobi: Shinobi, colors: com.shinobisim.ui.theme.AppC
         ) {
             Text(
                 text = shinobi.clan.displayName.first().toString(),
-                fontSize = 28.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 color = colors.textPrimary
             )
@@ -176,38 +242,31 @@ private fun ShinobiHeader(shinobi: Shinobi, colors: com.shinobisim.ui.theme.AppC
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = shinobi.name,
-                fontSize = 22.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.textPrimary
             )
             Text(
                 text = "Клан ${shinobi.clan.displayName}",
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 color = colors.textSecondary
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${shinobi.age} лет",
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.accentGold
             )
-            Text(
-                text = "${shinobi.skillPoints} очков",
-                fontSize = 14.sp,
-                color = colors.accentGreen
-            )
         }
     }
-
-    RatingBar(rating = shinobi.rating, colors = colors)
 }
 
 @Composable
 private fun RatingBar(rating: Int, colors: com.shinobisim.ui.theme.AppColors) {
     val progress = rating.toFloat() / Shinobi.MAX_RATING
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -217,7 +276,7 @@ private fun RatingBar(rating: Int, colors: com.shinobisim.ui.theme.AppColors) {
         }
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
-            progress = progress,
+            progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
@@ -231,8 +290,7 @@ private fun RatingBar(rating: Int, colors: com.shinobisim.ui.theme.AppColors) {
 @Composable
 private fun RouletteWheel(
     isSpinning: Boolean,
-    colors: com.shinobisim.ui.theme.AppColors,
-    onSpin: () -> Unit
+    colors: com.shinobisim.ui.theme.AppColors
 ) {
     val transition = rememberInfiniteTransition()
     val rotation by transition.animateFloat(
@@ -253,13 +311,13 @@ private fun RouletteWheel(
     ) {
         Text(
             text = "Рулетка навыков",
-            fontSize = 24.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = colors.textPrimary
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Крутите, чтобы получить очки навыков (1-10)",
+            text = if (isSpinning) "Крутится..." else "Повышайте возраст, чтобы крутить",
             fontSize = 14.sp,
             color = colors.textSecondary,
             textAlign = TextAlign.Center
@@ -268,7 +326,7 @@ private fun RouletteWheel(
         Spacer(Modifier.height(24.dp))
 
         Box(
-            modifier = Modifier.size(280.dp),
+            modifier = Modifier.size(240.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
@@ -311,7 +369,7 @@ private fun RouletteWheel(
                 }
 
                 drawCircle(
-                    color = colors.darkNavy,
+                    color = colors.surface,
                     radius = radius * 0.25f,
                     center = center
                 )
@@ -323,7 +381,7 @@ private fun RouletteWheel(
                 )
             }
 
-            Canvas(modifier = Modifier.size(280.dp)) {
+            Canvas(modifier = Modifier.size(240.dp)) {
                 val pointerY = 12f
                 drawPath(
                     path = androidx.compose.ui.graphics.Path().apply {
@@ -335,29 +393,6 @@ private fun RouletteWheel(
                     color = colors.accentGold
                 )
             }
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        Button(
-            onClick = onSpin,
-            enabled = !isSpinning,
-            modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .height(56.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.accentRed,
-                contentColor = colors.textPrimary,
-                disabledContainerColor = colors.panelNavy,
-                disabledContentColor = colors.textDim
-            )
-        ) {
-            Text(
-                text = if (isSpinning) "Крутится..." else "Крутить рулетку",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
@@ -381,7 +416,7 @@ private fun SpinResultDisplay(
         Spacer(Modifier.height(16.dp))
         Box(
             modifier = Modifier
-                .size(160.dp)
+                .size(140.dp)
                 .clip(CircleShape)
                 .background(Brush.radialGradient(listOf(resultColor, resultColor.copy(alpha = 0.2f))))
                 .border(3.dp, resultColor, CircleShape),
@@ -389,7 +424,7 @@ private fun SpinResultDisplay(
         ) {
             Text(
                 text = "+$points",
-                fontSize = 56.sp,
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = colors.textPrimary
             )
@@ -401,126 +436,13 @@ private fun SpinResultDisplay(
             color = colors.textSecondary
         )
         Spacer(Modifier.height(24.dp))
-        Button(
+        AccentButton(
+            text = "Продолжить",
             onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .height(48.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.accentGreen,
-                contentColor = colors.darkNavy
-            )
-        ) {
-            Text("Продолжить", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun BottomPanel(
-    shinobi: Shinobi,
-    colors: com.shinobisim.ui.theme.AppColors,
-    onIncreaseRating: () -> Unit,
-    onIncreaseAge: () -> Unit,
-    onOpenClanTree: () -> Unit,
-    onOpenElementalTree: () -> Unit
-) {
-    val canIncreaseRating = shinobi.skillPoints > 0 && shinobi.rating < Shinobi.MAX_RATING
-    val canIncreaseAge = !shinobi.isMaxAge
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ActionCard(
-                title = "Рейтинг",
-                value = "${shinobi.rating}",
-                subtitle = "+5 за 1 очко",
-                enabled = canIncreaseRating,
-                colors = colors,
-                modifier = Modifier.weight(1f),
-                onClick = onIncreaseRating
-            )
-            ActionCard(
-                title = "Возраст",
-                value = "${shinobi.age}",
-                subtitle = if (canIncreaseAge) "+1 год" else "Максимум",
-                enabled = canIncreaseAge,
-                colors = colors,
-                modifier = Modifier.weight(1f),
-                greenButton = true,
-                onClick = onIncreaseAge
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onOpenClanTree,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.panelNavy,
-                    contentColor = colors.textPrimary
-                )
-            ) {
-                Text("Дерево клана", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Button(
-                onClick = onOpenElementalTree,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.panelNavy,
-                    contentColor = colors.textPrimary
-                )
-            ) {
-                Text("Стихии", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionCard(
-    title: String,
-    value: String,
-    subtitle: String,
-    enabled: Boolean,
-    colors: com.shinobisim.ui.theme.AppColors,
-    modifier: Modifier = Modifier,
-    greenButton: Boolean = false,
-    onClick: () -> Unit
-) {
-    val bgColor = if (greenButton && enabled) colors.accentGreen else if (enabled) colors.accentRed else colors.panelNavy
-    val contentColor = if (enabled) colors.darkNavy else colors.textDim
-
-    Column(
-        modifier = modifier
-            .height(80.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(bgColor.copy(if (enabled) 1f else 0.3f))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(title, fontSize = 12.sp, color = contentColor.copy(alpha = 0.8f))
-        Text(value, fontSize = 24.sp, fontWeight = FontWeight.Black, color = contentColor)
-        Text(subtitle, fontSize = 11.sp, color = contentColor.copy(alpha = 0.7f))
+            accentColor = colors.accentGreen,
+            textColor = Color.White,
+            modifier = Modifier.fillMaxWidth(0.6f),
+            height = 48
+        )
     }
 }

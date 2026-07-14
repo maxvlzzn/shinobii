@@ -2,8 +2,6 @@ package com.shinobisim.ui.menu
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,9 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -37,14 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shinobisim.model.Clan
+import com.shinobisim.ui.theme.Background
 import com.shinobisim.ui.theme.LocalAppColors
+import com.shinobisim.ui.theme.PrimaryButton
 import com.shinobisim.ui.theme.toColor
 
 @Composable
@@ -58,7 +53,7 @@ fun ClanSelectionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(colors.darkNavy, colors.deepNavy)))
+            .background(Background)
             .padding(24.dp)
     ) {
         Text(
@@ -84,8 +79,8 @@ fun ClanSelectionScreen(
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = colors.panelNavy,
-                unfocusedContainerColor = colors.panelNavy,
+                focusedContainerColor = colors.surface,
+                unfocusedContainerColor = colors.surface,
                 focusedIndicatorColor = colors.accentRed,
                 unfocusedIndicatorColor = colors.divider,
                 focusedTextColor = colors.textPrimary,
@@ -120,7 +115,8 @@ fun ClanSelectionScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Button(
+        PrimaryButton(
+            text = "Начать путь синоби",
             onClick = {
                 val clan = selectedClan
                 if (name.isNotBlank() && clan != null) {
@@ -128,19 +124,8 @@ fun ClanSelectionScreen(
                 }
             },
             enabled = name.isNotBlank() && selectedClan != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.accentRed,
-                contentColor = colors.textPrimary,
-                disabledContainerColor = colors.panelNavy,
-                disabledContentColor = colors.textDim
-            )
-        ) {
-            Text("Начать путь синоби", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -158,7 +143,7 @@ private fun ClanCard(
         label = "border"
     )
     val bgColor by animateColorAsState(
-        targetValue = if (selected) clanColor.copy(alpha = 0.15f) else colors.panelNavy,
+        targetValue = if (selected) clanColor.copy(alpha = 0.08f) else colors.surface,
         animationSpec = tween(300),
         label = "bg"
     )
@@ -179,7 +164,7 @@ private fun ClanCard(
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
-                        listOf(clanColor.copy(alpha = 0.6f), clanColor.copy(alpha = 0.2f))
+                        listOf(clanColor.copy(alpha = 0.6f), clanColor.copy(alpha = 0.15f))
                     )
                 )
                 .border(2.dp, clanColor, CircleShape),
