@@ -276,7 +276,7 @@ private fun RatingBar(rating: Int, colors: com.shinobisim.ui.theme.AppColors) {
         }
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
-            progress = { progress },
+            progress = progress,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
